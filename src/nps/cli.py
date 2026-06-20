@@ -11,7 +11,7 @@ from pathlib import Path
 from loguru import logger
 
 from . import __version__
-from .aria2 import add_to_aria2_rpc, write_aria2_input
+from .aria2 import add_to_aria2_rpc, run_aria2c, write_aria2_input
 from .catalog import load_games, reset_cache
 from .download import download_games
 from .models import ContentType, Filter, Game, Platform
@@ -56,6 +56,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--reset-cache", action="store_true", help="Delete all cached catalogs and exit.")
     p.add_argument("--offline", action="store_true", help="Use only the cached catalog (no network).")
     p.add_argument("--aria2", type=Path, metavar="FILE", help="Export matches as an aria2 input file.")
+    p.add_argument("--aria2-run", action="store_true",
+                   help="Download matches now via a local aria2c (single command; needs aria2c on PATH).")
     p.add_argument("--aria2-rpc", nargs="?", const=os.getenv("ARIA2_RPC_URL"), metavar="URL",
                    help="Push matches to a running aria2 daemon (URL or ARIA2_RPC_URL env).")
     p.add_argument("--aria2-secret", default=os.getenv("ARIA2_RPC_SECRET"),
@@ -111,6 +113,13 @@ def main(argv: list[str] | None = None) -> None:
         count = write_aria2_input(matches, args.output, args.aria2)
         logger.info("Wrote {} entries to {}", count, args.aria2)
         logger.info("Run: aria2c -c -j{} -i {}", args.concurrency, args.aria2)
+        return
+
+    if args.aria2_run:
+        try:
+            run_aria2c(matches, args.output, concurrency=args.concurrency)
+        except FileNotFoundError as exc:
+            logger.error(str(exc))
         return
 
     if args.aria2_rpc:

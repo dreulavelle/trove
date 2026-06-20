@@ -1,7 +1,10 @@
-"""aria2 hand-off: write an input file, or push to a running daemon over RPC."""
+"""aria2 hand-off: write an input file, run a local aria2c, or push over RPC."""
 
 from __future__ import annotations
 
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 import httpx
@@ -23,6 +26,28 @@ def write_aria2_input(games: list[Game], output_dir: Path, dest: Path) -> int:
             lines.append(f"  checksum=sha-256={g.sha256.lower()}")
     dest.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return len(targets)
+
+
+def run_aria2c(games: list[Game], output_dir: Path, *, concurrency: int = 3) -> int:
+    """Download matches now with a local ``aria2c`` (single command).
+
+    Writes a temporary input file and hands it to ``aria2c -c``; aria2c streams
+    its own progress and verifies the embedded SHA-256 checksums. Returns aria2c's
+    exit code. Raises ``FileNotFoundError`` if ``aria2c`` isn't on PATH.
+    """
+    aria2c = shutil.which("aria2c")
+    if aria2c is None:
+        raise FileNotFoundError(
+            "aria2c not found on PATH; install aria2, or use --aria2 FILE to export an input file."
+        )
+    with tempfile.NamedTemporaryFile("w", suffix=".aria2.txt", delete=False, encoding="utf-8") as fh:
+        tmp = Path(fh.name)
+    try:
+        count = write_aria2_input(games, output_dir, tmp)
+        logger.info("Handing {} download(s) to aria2c (-j{}).", count, concurrency)
+        return subprocess.run([aria2c, "-c", f"-j{concurrency}", "-i", str(tmp)]).returncode
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 async def add_to_aria2_rpc(
