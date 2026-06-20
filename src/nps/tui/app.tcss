@@ -1,3 +1,7 @@
+TabbedContent {
+    height: 1fr;  /* share the column with the fixed-height status bar */
+}
+
 #filters {
     height: 3;
     padding: 0 1;

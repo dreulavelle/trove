@@ -130,6 +130,14 @@ async def test_aria2_without_url_is_safe(app, monkeypatch):
         assert app.is_running                        # notified, did not crash
 
 
+async def test_status_bar_has_its_own_row(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        status = app.query_one("#status")
+        footer = app.query_one(tui_app.Footer)
+        assert status.region.y != footer.region.y  # must not hide behind the footer
+
+
 def test_human_size():
     assert tui_app.human_size(None) == ""
     assert tui_app.human_size(0) == ""
