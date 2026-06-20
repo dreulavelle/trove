@@ -1,3 +1,7 @@
+---
+title: NoPayStation catalog browser & downloader
+---
+
 # Trove
 
 A fast CLI and TUI for browsing and downloading the
@@ -9,15 +13,16 @@ Downloads resume, retry, and verify SHA-256, or hand off to a running aria2.
 
 ## Install
 
-From a clone, with [uv](https://docs.astral.sh/uv/):
+```bash
+pip install trovenps
+```
+
+For development from a clone, use [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv sync                       # core
 uv sync --extra monitoring    # + optional GlitchTip/Sentry error reporting
 ```
-
-Once published to PyPI, `pip install trovenps` (distribution name `trovenps`)
-will install the same `nps` and `trove` commands.
 
 Two commands ship with the package:
 

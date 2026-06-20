@@ -44,20 +44,32 @@ the action keys (download, select) live while you browse.
 
 ## aria2 hand-off
 
-Instead of downloading in-process, hand matches to [aria2](https://aria2.github.io/):
+Use [aria2](https://aria2.github.io/) as the download engine instead of the
+built-in downloader. The simplest form is one command — it needs `aria2c` on
+your PATH:
 
 ```bash
-nps "patapon" -p PSP --all --aria2 patapon.txt   # write an aria2 input file
-aria2c -c -j3 -i patapon.txt
+nps "patapon" -p PSP --all --aria2-run            # download now via local aria2c
+```
 
+Or export an input file and run aria2c yourself:
+
+```bash
+nps "patapon" -p PSP --all --aria2 patapon.txt
+aria2c -c -j3 -i patapon.txt
+```
+
+Or push to a running aria2 daemon over RPC:
+
+```bash
 nps "patapon" -p PSP --all \
   --aria2-rpc http://localhost:6800/jsonrpc \
-  --aria2-secret TOKEN                            # push to a running daemon
+  --aria2-secret TOKEN
 ```
 
 `--aria2-rpc` and `--aria2-secret` fall back to `ARIA2_RPC_URL` /
 `ARIA2_RPC_SECRET`. Use `--aria2-dir` to set the download directory on the
-aria2 host.
+aria2 host. All three carry over the embedded SHA-256 checksums.
 
 ## Caching & configuration
 
