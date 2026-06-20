@@ -1,7 +1,7 @@
 import time
 
 from nps import catalog
-from nps.models import ContentType, Platform
+from nps.models import ContentType, Game, Platform
 
 # A synthetic dataset exercising the real-world quirks the parser must survive:
 # duplicate FW headers, a junk file size, a Unicode name, and a header-less row.
@@ -26,6 +26,22 @@ def test_parse_tsv_handles_quirks(tmp_path):
     assert b.name == "テスト" and b.file_size is None  # junk size -> None, row kept
     assert all(g.platform is Platform.PSV for g in games)
     assert all(g.content_type is ContentType.GAMES for g in games)
+
+
+def test_dedupe_prefers_downloadable():
+    c = {"platform": Platform.PSV, "content_type": ContentType.GAMES}
+    no_link = Game(title_id="T1", region="US", name="Game", content_id="CID1",
+                   pkg_direct_link="MISSING", **c)
+    with_link = Game(title_id="T1", region="US", name="Game", content_id="CID1",
+                     pkg_direct_link="http://e/x.pkg", **c)
+    other = Game(title_id="T2", region="US", name="Other", content_id="CID2",
+                 pkg_direct_link="http://e/y.pkg", **c)
+
+    out = catalog._dedupe([no_link, with_link, other])
+
+    assert len(out) == 2  # T1 collapsed
+    kept = {g.identity: g for g in out}
+    assert kept["T1|US|CID1"].downloadable  # the downloadable variant won
 
 
 def test_dataset_name():
