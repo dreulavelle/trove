@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import os
 from pathlib import Path
 
@@ -13,7 +14,25 @@ from . import __version__
 from .aria2 import add_to_aria2_rpc, write_aria2_input
 from .catalog import load_games, reset_cache
 from .download import download_games
-from .models import ContentType, Filter, Platform
+from .models import ContentType, Filter, Game, Platform
+
+
+def _game_json(g: Game) -> dict[str, object]:
+    """A flat, agent-friendly view of a game (stable keys, no internal model noise)."""
+    return {
+        "title_id": g.title_id,
+        "name": g.name,
+        "region": g.region,
+        "platform": g.platform.value if g.platform else None,
+        "content_type": g.content_type.value if g.content_type else None,
+        "content_subtype": g.content_subtype,
+        "downloadable": g.downloadable,
+        "url": g.download_url if g.downloadable else None,
+        "file_size": g.file_size,
+        "sha256": g.sha256,
+        "content_id": g.content_id,
+        "last_modification_date": g.last_modification_date,
+    }
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -28,6 +47,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("-r", "--region", action="append", help="Region to include (repeatable), e.g. US EU JP.")
     p.add_argument("-o", "--output", type=Path, default=Path("downloads"), help="Output directory.")
     p.add_argument("-l", "--list", action="store_true", help="List matches without downloading.")
+    p.add_argument("--json", action="store_true",
+                   help="Print matches as JSON (no download); for scripts and agents.")
     p.add_argument("-a", "--all", action="store_true", help="Download every downloadable match.")
     p.add_argument("-c", "--concurrency", type=int, default=3, help="Max concurrent downloads.")
     p.add_argument("--no-verify", action="store_true", help="Skip SHA256 verification.")
@@ -47,8 +68,10 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> None:
     from .observability import setup
 
-    setup()
     args = _build_parser().parse_args(argv)
+    # In --json mode, logs (loguru -> tqdm.write -> stdout) would corrupt the
+    # payload, so silence the console sink and let stdout carry JSON alone.
+    setup(console=not args.json)
 
     if args.reset_cache:
         logger.info("Removed {} cached file(s).", reset_cache())
@@ -58,14 +81,20 @@ def main(argv: list[str] | None = None) -> None:
         load_games(args.platform, args.content_type, refresh=args.refresh, offline=args.offline)
     )
     if not games:
+        if args.json:
+            print("[]")
+            return
         logger.warning("No catalog data for {} {}.", args.platform.value, args.content_type.value)
         return
 
     flt = Filter(query=args.query, regions=set(args.region) if args.region else None)
     matches = flt.apply(games)
 
-    if args.list or not (args.query or args.all):
+    if args.json or args.list or not (args.query or args.all):
         shown = Filter(query=args.query, regions=flt.regions, downloadable_only=False).apply(games)
+        if args.json:
+            print(json.dumps([_game_json(g) for g in shown], indent=2))
+            return
         print(f"{len(shown)} match(es), {len(matches)} downloadable:\n")
         for g in shown:
             mark = " " if g.downloadable else "x"

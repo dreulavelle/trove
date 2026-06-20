@@ -15,6 +15,9 @@ wheels/
 .env
 .mcp.json
 
+# Docs site build
+site/
+
 # Cache & downloads
 cache/
 downloads/

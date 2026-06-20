@@ -7,39 +7,21 @@ Downloads resume, retry, and verify SHA-256, or hand off to a running aria2.
 ![Browse](docs/browse.svg)
 ![Downloads](docs/downloads.svg)
 
-## Install
+## Quickstart
 
 ```bash
-uv sync                       # core
-uv sync --extra monitoring    # + optional GlitchTip/Sentry error reporting
+uv sync           # from a clone (or, once published: pip install trovenps)
+nps "tearaway"    # search the catalog
+trove             # browse in the TUI
 ```
 
-## CLI
+`nps` is the command line; `trove` is the full-screen TUI. Add `--json` to any
+search for output a script or AI agent can parse.
 
-```bash
-nps "tearaway"                              # search PSV games
-nps -p PS3 -t DLCS "persona"                 # any platform / type
-nps "PCSC80018" -o ./downloads               # download
-nps "patapon" -p PSP --all                   # download every match
-nps -a --aria2-rpc URL --aria2-secret TOKEN  # hand off to aria2
-```
+## Docs
 
-## TUI
-
-```bash
-trove
-```
-
-Search, multi-select (selections survive searches), and download with live
-progress or aria2 hand-off.
-
-## Notes
-
-- Catalogs come from NoPayStation and are cached for 30 days
-  (`--refresh`, `--reset-cache`, `--offline`). The cache lives in the OS cache
-  dir; set `NPS_CACHE_DIR` to change it. Downloads default to `./downloads`.
-- aria2 (`--aria2-rpc` / `ARIA2_RPC_URL`) and error reporting (`GLITCHTIP_DSN`)
-  are optional.
+Full usage, the JSON contract, aria2 hand-off, and caching all live at
+**<https://dreulavelle.github.io/trove/>**.
 
 ## Develop
 

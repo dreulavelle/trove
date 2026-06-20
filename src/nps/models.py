@@ -32,7 +32,19 @@ COLUMNS: dict[str, str] = {
 }
 
 
-class Platform(str, Enum):
+class _ValueStr(str, Enum):
+    """A str enum whose ``str()`` is the bare value (``PSV``, not ``Platform.PSV``).
+
+    argparse renders ``choices`` and error messages via ``str()``; without this
+    ``--help`` would advertise ``Platform.PSV`` as the token to type, which the
+    parser then rejects.
+    """
+
+    def __str__(self) -> str:
+        return self.value
+
+
+class Platform(_ValueStr):
     PSV = "PSV"
     PSP = "PSP"
     PS3 = "PS3"
@@ -40,7 +52,7 @@ class Platform(str, Enum):
     PSM = "PSM"
 
 
-class ContentType(str, Enum):
+class ContentType(_ValueStr):
     GAMES = "GAMES"
     DLCS = "DLCS"
     THEMES = "THEMES"
