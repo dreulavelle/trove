@@ -145,6 +145,16 @@ async def fetch_dataset(
             await client.aclose()
 
 
+def _dedupe(games: list[Game]) -> list[Game]:
+    """Collapse rows sharing an identity, preferring a downloadable variant."""
+    best: dict[str, Game] = {}
+    for g in games:
+        existing = best.get(g.identity)
+        if existing is None or (g.downloadable and not existing.downloadable):
+            best[g.identity] = g
+    return list(best.values())
+
+
 def parse_tsv(path: Path, platform: Platform, content_type: ContentType) -> list[Game]:
     games: list[Game] = []
     skipped = 0
@@ -181,4 +191,5 @@ async def load_games(
     )
     if path is None:
         return []
-    return await asyncio.to_thread(parse_tsv, path, platform, content_type)
+    games = await asyncio.to_thread(parse_tsv, path, platform, content_type)
+    return _dedupe(games)

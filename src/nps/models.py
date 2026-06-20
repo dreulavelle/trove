@@ -98,6 +98,11 @@ class Game(BaseModel):
     def filename(self) -> str:
         return f"{self.content_id or f'{self.title_id}_{self.region}'}.pkg"
 
+    @property
+    def identity(self) -> str:
+        """Canonical key for dedup and selection (NoPayStation lists some dupes)."""
+        return f"{self.title_id}|{self.region}|{self.content_id or self.name}"
+
 
 class Filter(BaseModel):
     """Game selection criteria; unset fields are ignored."""
