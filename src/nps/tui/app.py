@@ -40,8 +40,8 @@ def human_size(num: int | None) -> str:
 
 
 def game_key(game: Game) -> str:
-    """Identity for table rows and selection, so selection survives re-filtering."""
-    return f"{game.title_id}|{game.region}|{game.content_id or game.name}"
+    """Row/selection key — stable so selection survives re-filtering."""
+    return game.identity
 
 
 class DownloadRow(Static):
@@ -86,8 +86,10 @@ class TroveApp(App):
     TITLE = "Trove"
     SUB_TITLE = "NoPayStation"
     CSS_PATH = "app.tcss"
+    MAX_ROWS = 1000  # cap rendered rows so huge datasets stay snappy; refine to narrow
 
     BINDINGS = [
+        Binding("/", "focus_search", "Search"),
         Binding("space", "toggle_select", "Select"),
         Binding("a", "select_all", "Select all"),
         Binding("c", "clear_select", "Clear"),
@@ -130,9 +132,9 @@ class TroveApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
-        self._columns = self.query_one(DataTable).add_columns(
-            "", "Title ID", "Region", "Name", "Size"
-        )
+        table = self.query_one(DataTable)
+        self._columns = table.add_columns("", "Title ID", "Region", "Name", "Size")
+        table.focus()  # action keys act on the list by default; "/" jumps to search
         self.load_dataset()
 
     @property
@@ -163,15 +165,21 @@ class TroveApp(App):
         table = self.query_one(DataTable)
         table.clear()
         for g in self.view:
+            if len(self._by_key) >= self.MAX_ROWS:
+                break
             key = game_key(g)
+            if key in self._by_key:  # a DataTable row key must be unique
+                continue
             self._by_key[key] = g
             mark = "✓" if key in self.selected else ("" if g.downloadable else "·")
             table.add_row(mark, g.title_id, g.region, g.name, human_size(g.file_size), key=key)
         self.update_status()
 
     def update_status(self) -> None:
+        matches, rendered = len(self.view), len(self._by_key)
+        more = f"  (+{matches - rendered:,} — refine)" if matches > rendered else ""
         self.query_one("#status", Static).update(
-            f" selected: {len(self.selected)}    shown: {len(self.view):,} / {len(self.games):,}"
+            f" selected: {len(self.selected)}    shown: {rendered:,} / {matches:,}{more}"
         )
 
     @on(Select.Changed, "#platform")
@@ -186,6 +194,13 @@ class TroveApp(App):
     def _type_changed(self, event: Select.Changed) -> None:
         if event.value is not Select.BLANK:
             self.load_dataset()
+
+    def action_focus_search(self) -> None:
+        self.query_one("#search", Input).focus()
+
+    @on(Input.Submitted, "#search")
+    def _search_submitted(self) -> None:
+        self.query_one(DataTable).focus()  # Enter commits the filter, back to the list
 
     @on(Input.Changed, "#search")
     def _search_changed(self, event: Input.Changed) -> None:
@@ -225,7 +240,8 @@ class TroveApp(App):
         self.update_status()
 
     def action_select_all(self) -> None:
-        self.selected.update({k: g for k, g in self._by_key.items() if g.downloadable})
+        # operate on the full match set, not just the capped rendered rows
+        self.selected.update({game_key(g): g for g in self.view if g.downloadable})
         self.apply_filter()
 
     def action_clear_select(self) -> None:
