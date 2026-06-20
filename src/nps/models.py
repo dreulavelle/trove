@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ValidationInfo, field_validator
 
@@ -32,19 +32,10 @@ COLUMNS: dict[str, str] = {
 }
 
 
-class _ValueStr(str, Enum):
-    """A str enum whose ``str()`` is the bare value (``PSV``, not ``Platform.PSV``).
-
-    argparse renders ``choices`` and error messages via ``str()``; without this
-    ``--help`` would advertise ``Platform.PSV`` as the token to type, which the
-    parser then rejects.
-    """
-
-    def __str__(self) -> str:
-        return self.value
-
-
-class Platform(_ValueStr):
+# StrEnum's str() is the bare value ("PSV", not "Platform.PSV"), which argparse
+# uses to render choices and error messages — so --help advertises the token the
+# parser actually accepts.
+class Platform(StrEnum):
     PSV = "PSV"
     PSP = "PSP"
     PS3 = "PS3"
@@ -52,7 +43,7 @@ class Platform(_ValueStr):
     PSM = "PSM"
 
 
-class ContentType(_ValueStr):
+class ContentType(StrEnum):
     GAMES = "GAMES"
     DLCS = "DLCS"
     THEMES = "THEMES"

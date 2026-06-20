@@ -1,9 +1,9 @@
 [project]
 name = "trovenps"
-version = "0.2.0"
+version = "0.3.0"
 description = "Trove — a NoPayStation catalog browser & downloader (PSV/PSP/PS3/PSX/PSM) with resumable downloads, aria2 hand-off, and a TUI."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Spoked" }]
@@ -12,6 +12,8 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Utilities",
 ]
