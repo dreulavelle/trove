@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+
+# Local config & secrets (never commit)
+.env
+.mcp.json
+
+# Cache & downloads
+cache/
+downloads/
+*.part

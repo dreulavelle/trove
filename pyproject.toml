@@ -1,0 +1,54 @@
+[project]
+name = "nps"
+version = "0.2.0"
+description = "Trove — a NoPayStation catalog browser & downloader (PSV/PSP/PS3/PSX/PSM) with resumable downloads, aria2 hand-off, and a TUI."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Spoked" }]
+keywords = ["playstation", "psvita", "psp", "ps3", "nopaystation", "downloader", "tui"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "httpx>=0.28.1",
+    "loguru>=0.7.3",
+    "platformdirs>=4.3.6",
+    "pydantic>=2.13.4",
+    "textual>=1.0.0",
+    "tqdm>=4.67.1",
+]
+
+[project.optional-dependencies]
+monitoring = ["sentry-sdk>=2.20.0"]
+
+[project.scripts]
+nps = "nps.cli:main"
+trove = "nps.tui:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+    "pytest-asyncio>=0.25.2",
+    "ruff>=0.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nps"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
