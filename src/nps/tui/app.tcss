@@ -1,0 +1,35 @@
+#filters {
+    height: 3;
+    padding: 0 1;
+}
+
+#filters Select {
+    width: 14;
+    margin-right: 1;
+}
+
+#filters Input {
+    width: 1fr;
+    margin-right: 1;
+}
+
+DataTable {
+    height: 1fr;
+}
+
+#dl-list {
+    height: 1fr;
+    padding: 1;
+}
+
+DownloadRow {
+    height: 3;
+    padding: 0 1;
+    border-bottom: tall $panel;
+}
+
+#status {
+    height: 1;
+    background: $panel;
+    color: $text-muted;
+}
