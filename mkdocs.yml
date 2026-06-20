@@ -1,0 +1,31 @@
+site_name: Trove
+site_description: A fast CLI and TUI for browsing and downloading the NoPayStation catalog.
+site_url: https://dreulavelle.github.io/trove/
+repo_url: https://github.com/dreulavelle/trove
+repo_name: dreulavelle/trove
+
+theme:
+  name: material
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: deep purple
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Usage: usage.md
+  - Scripting & agents: agents.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/dreulavelle/trove

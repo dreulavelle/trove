@@ -1,0 +1,37 @@
+name: pages
+
+# Builds the Zensical docs site and deploys it to GitHub Pages.
+# Pages source must be set to "GitHub Actions" in repo settings (Settings > Pages).
+
+on:
+  push:
+    branches: [site]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install zensical
+      - run: zensical build --strict
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
