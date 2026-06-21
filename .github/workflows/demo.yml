@@ -1,0 +1,32 @@
+name: demo
+
+# Renders docs/demo.gif from docs/demo.tape on Linux (vhs is reliable there,
+# unlike Windows) and commits the result. Triggered when the tape changes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/demo.tape
+      - .github/workflows/demo.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the regenerated gif back to the branch
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: pip install .          # `trove` on PATH, as a user would have it
+      - uses: charmbracelet/vhs-action@v2
+        with:
+          path: docs/demo.tape
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: regenerate demo gif [skip ci]"
+          file_pattern: docs/demo.gif

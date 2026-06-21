@@ -1,4 +1,5 @@
 # Record the Trove demo GIF:  vhs docs/demo.tape  ->  docs/demo.gif
+# CI-safe: browses, searches, and selects — it never starts a real download.
 Output docs/demo.gif
 
 Set FontSize 16
@@ -7,16 +8,18 @@ Set Height 720
 Set Padding 14
 Set Theme "Catppuccin Mocha"
 
-Type "uv run trove" Enter
-Sleep 5s
+Type "trove" Enter
+Sleep 6s
 Type "/"
 Type "tearaway"
 Sleep 1500ms
 Enter
-Sleep 700ms
+Sleep 1s
 Space
-Sleep 900ms
-Type "d"
-Sleep 5s
+Sleep 700ms
+Down
+Sleep 400ms
+Space
+Sleep 1200ms
 Type "q"
 Sleep 1s
