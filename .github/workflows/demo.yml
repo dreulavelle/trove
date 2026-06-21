@@ -1,7 +1,9 @@
 name: demo
 
 # Renders docs/demo.gif from docs/demo.tape on Linux (vhs is reliable there,
-# unlike Windows) and commits the result. Triggered when the tape changes.
+# unlike Windows) and publishes it as a build artifact. main is protected, so
+# the gif isn't auto-committed: download the artifact and commit it via a PR
+# when you want to refresh the version shown in the README.
 
 on:
   push:
@@ -12,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # commit the regenerated gif back to the branch
+  contents: read
 
 jobs:
   render:
@@ -32,7 +34,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y vhs ttyd ffmpeg
       - run: vhs docs/demo.tape
-      - uses: stefanzweifel/git-auto-commit-action@v5
+      - uses: actions/upload-artifact@v4
         with:
-          commit_message: "docs: regenerate demo gif [skip ci]"
-          file_pattern: docs/demo.gif
+          name: demo-gif
+          path: docs/demo.gif
