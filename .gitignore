@@ -18,6 +18,14 @@ wheels/
 # Docs site build
 site/
 
+# Nuitka build output
+_nuitka/
+build-nuitka/
+*.build/
+*.dist/
+*.onefile-build/
+nuitka-crash-report.xml
+
 # Cache & downloads
 cache/
 downloads/

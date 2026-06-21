@@ -26,7 +26,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install . nuitka
+      - run: pip install . "nuitka[onefile]"
       - name: Compile nps + trove
         shell: bash
         run: |
@@ -34,9 +34,10 @@ jobs:
           [ "${{ runner.os }}" = "Windows" ] && ext=".exe"
           mkdir -p out
           for entry in nps trove; do
-            python -m nuitka --onefile --assume-yes-for-downloads \
-              --include-package=nps \
-              --include-package-data=nps \
+            python -m nuitka --mode=onefile --assume-yes-for-downloads \
+              --disable-cache=all \
+              --include-package=trovenps \
+              --include-package-data=trovenps \
               --include-package-data=textual \
               --include-distribution-metadata=trovenps \
               --output-dir=build-nuitka \
