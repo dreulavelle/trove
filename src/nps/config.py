@@ -25,6 +25,10 @@ class Settings(BaseModel):
     concurrency: int = Field(default=3, ge=1, le=16)
     verify: bool = True
     region: str = ""
+    organize_by_platform: bool = True  # downloads/<console>/... instead of one flat folder
+    aria2_rpc_url: str = ""             # if set, the CLI uses this aria2 instead of downloading locally
+    aria2_rpc_secret: str = ""
+    aria2_dir: str = ""                 # download dir on the aria2 host (RPC mode)
 
 
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:

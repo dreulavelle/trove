@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from enum import StrEnum
+from pathlib import Path
 
 from pydantic import BaseModel, ValidationInfo, field_validator
 
@@ -41,6 +42,20 @@ class Platform(StrEnum):
     PS3 = "PS3"
     PSX = "PSX"
     PSM = "PSM"
+
+    @property
+    def folder(self) -> str:
+        """Friendly lowercase subfolder for per-console downloads (PSV -> psvita)."""
+        return _PLATFORM_FOLDERS[self]
+
+
+_PLATFORM_FOLDERS = {
+    Platform.PSV: "psvita",
+    Platform.PSP: "psp",
+    Platform.PS3: "ps3",
+    Platform.PSX: "psx",
+    Platform.PSM: "psm",
+}
 
 
 class ContentType(StrEnum):
@@ -105,6 +120,11 @@ class Game(BaseModel):
     def identity(self) -> str:
         """Canonical key for dedup and selection (NoPayStation lists some dupes)."""
         return f"{self.title_id}|{self.region}|{self.content_id or self.name}"
+
+
+def dest_dir(base: Path, game: Game, organize: bool) -> Path:
+    """Where ``game`` is saved locally: ``base/<console>`` when organizing, else ``base``."""
+    return base / game.platform.folder if (organize and game.platform) else base
 
 
 def parse_fw(value: str | None) -> float | None:
