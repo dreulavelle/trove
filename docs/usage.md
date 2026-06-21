@@ -23,11 +23,13 @@ nps "tearaway" --json                        # machine-readable output (see Agen
 | `--title-id` | Match a Title ID substring only. |
 | `--max-fw` | Only items requiring firmware ≤ this version (e.g. `3.60`). |
 | `--min-size` / `--max-size` | Bound size; accepts `100MB`, `2GB`, or raw bytes. |
-| `-o, --output` | Output directory (default `./downloads`). |
+| `-o, --output` | Output directory (default: saved `download_dir`, else `./downloads`). |
+| `--flat` | Don't split downloads into per-console subfolders. |
+| `--local` | Force the built-in downloader even if an aria2 instance is configured. |
 | `-l, --list` | List matches without downloading. |
 | `-a, --all` | Download every downloadable match. |
 | `--json` | Print matches as JSON; no download. |
-| `-c, --concurrency` | Max concurrent downloads (default 3). |
+| `-c, --concurrency` | Max concurrent downloads (default: saved value, else 3). |
 | `--no-verify` | Skip SHA-256 verification. |
 | `--refresh` | Force-refresh the catalog from NoPayStation. |
 | `--reset-cache` | Delete all cached catalogs and exit. |
@@ -35,6 +37,26 @@ nps "tearaway" --json                        # machine-readable output (see Agen
 
 NoPayStation doesn't publish every platform × type combination; unavailable
 combinations return nothing.
+
+### Where files go
+
+Downloads are split by console so a mixed batch stays tidy:
+
+```text
+downloads/
+  psvita/  psp/  ps3/  psx/  psm/
+```
+
+Pass `--flat` (or turn off the toggle in Settings) for a single folder. The base
+folder comes from `-o`, else your saved `download_dir`, else `./downloads`.
+
+### Shared settings
+
+The CLI reads the same `settings.json` the TUI writes, so saved values become
+defaults — `download_dir`, `concurrency`, `verify`, a default region, the
+per-console toggle, and an aria2 instance. Precedence is **explicit flag > env
+var > settings > built-in default**. In particular, if you save an aria2 URL,
+plain `nps "game"` routes to it automatically (use `--local` to override).
 
 ### Filtering
 
@@ -68,10 +90,12 @@ size for each transfer:
 
 ### Settings
 
-The **Settings** tab saves your download folder, concurrency, SHA-256
-verification, and a default region filter. They apply immediately and persist to
+The **Settings** tab saves your download folder, the per-console organize toggle,
+concurrency, SHA-256 verification, a default region filter, and an optional aria2
+instance (RPC URL / secret / remote dir). The current resolved download location
+shows live under the folder field. Everything applies immediately and persists to
 `settings.json` in your OS config directory (`~/.config/trovenps` on Linux;
-override with `NPS_CONFIG_DIR`).
+override with `NPS_CONFIG_DIR`) — the same file the CLI reads.
 
 ![Settings](settings.svg)
 
@@ -101,8 +125,10 @@ nps "patapon" -p PSP --all \
 ```
 
 `--aria2-rpc` and `--aria2-secret` fall back to `ARIA2_RPC_URL` /
-`ARIA2_RPC_SECRET`. Use `--aria2-dir` to set the download directory on the
-aria2 host. All three carry over the embedded SHA-256 checksums.
+`ARIA2_RPC_SECRET`, then to a saved aria2 instance (so once it's in Settings you
+can drop the flags entirely). Use `--aria2-dir` for the download directory on the
+aria2 host. All three carry over the embedded SHA-256 checksums and the
+per-console subfolders.
 
 ## Caching & configuration
 
