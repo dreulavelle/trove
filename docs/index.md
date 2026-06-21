@@ -8,6 +8,8 @@ A fast CLI and TUI for browsing and downloading the
 [NoPayStation](https://nopaystation.com) catalog — PSV, PSP, PS3, PSX and PSM.
 Downloads resume, retry, and verify SHA-256, or hand off to a running aria2.
 
+![Trove demo](demo.gif)
+
 ![Browse](browse.svg)
 ![Downloads](downloads.svg)
 

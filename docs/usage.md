@@ -19,6 +19,10 @@ nps "tearaway" --json                        # machine-readable output (see Agen
 | `-p, --platform` | `PSV` (default), `PSP`, `PS3`, `PSX`, `PSM`. |
 | `-t, --type` | `GAMES` (default), `DLCS`, `THEMES`, `UPDATES`, `DEMOS`, `AVATARS`. |
 | `-r, --region` | Region to include, repeatable (e.g. `-r US -r EU`). |
+| `--name` | Match a name substring only (vs the combined `query`). |
+| `--title-id` | Match a Title ID substring only. |
+| `--max-fw` | Only items requiring firmware ≤ this version (e.g. `3.60`). |
+| `--min-size` / `--max-size` | Bound size; accepts `100MB`, `2GB`, or raw bytes. |
 | `-o, --output` | Output directory (default `./downloads`). |
 | `-l, --list` | List matches without downloading. |
 | `-a, --all` | Download every downloadable match. |
@@ -31,6 +35,21 @@ nps "tearaway" --json                        # machine-readable output (see Agen
 
 NoPayStation doesn't publish every platform × type combination; unavailable
 combinations return nothing.
+
+### Filtering
+
+Flags combine, so you can narrow a list before browsing or downloading:
+
+```bash
+nps "" --max-fw 3.60                    # everything that runs on firmware <= 3.60
+nps "persona" -p PS3 --max-size 2GB     # skip the huge ones
+nps --max-fw 3.65 --min-size 100MB --json
+```
+
+`--max-fw` is the firmware-compatibility filter homebrew users want: it keeps only
+items whose required firmware is at or below the version you give. Items with an
+**unknown** required firmware are excluded, not assumed safe. `required_fw` is also
+in the `--json` output, so an agent can filter on it too.
 
 ## TUI (`trove`)
 

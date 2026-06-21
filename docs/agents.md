@@ -48,6 +48,7 @@ results, then act on the `url` and `sha256` fields yourself.
 | `url` | Direct PKG link, or `null` when not downloadable. |
 | `file_size` | Bytes, or `null` if the catalog omits it. |
 | `sha256` | Expected hash for verification, or `null`. |
+| `required_fw` | Minimum firmware string (e.g. `3.60`), or `null`. Filter with `--max-fw`. |
 | `content_id` | Sony content ID. |
 | `last_modification_date` | As published by NoPayStation. |
 
