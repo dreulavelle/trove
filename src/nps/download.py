@@ -10,7 +10,7 @@ import httpx
 from loguru import logger
 
 from . import monitoring
-from .models import Game
+from .models import Game, dest_dir
 from .progress import ProgressSink, TqdmSink
 
 _RETRYABLE = (httpx.TransportError, httpx.TimeoutException)
@@ -77,10 +77,12 @@ async def download_game(
     verify: bool = True,
     sink: ProgressSink | None = None,
     max_retries: int = 5,
+    organize: bool = True,
 ) -> Path:
     url = game.download_url
-    output_dir.mkdir(parents=True, exist_ok=True)
-    dest = output_dir / game.filename
+    out = dest_dir(output_dir, game, organize)
+    out.mkdir(parents=True, exist_ok=True)
+    dest = out / game.filename
     sink = sink if sink is not None else TqdmSink()
     key = game.filename
 
@@ -149,6 +151,7 @@ async def download_games(
     concurrency: int = 3,
     verify: bool = True,
     sink: ProgressSink | None = None,
+    organize: bool = True,
 ) -> list[Path]:
     """Download many games concurrently, capped at ``concurrency`` in flight."""
     targets = [g for g in games if g.downloadable]
@@ -175,7 +178,10 @@ async def download_games(
                     )
                     try:
                         results.append(
-                            await download_game(game, output_dir, client=client, verify=verify, sink=sink)
+                            await download_game(
+                                game, output_dir, client=client, verify=verify,
+                                sink=sink, organize=organize,
+                            )
                         )
                     except Exception as exc:  # report every failure, but keep going
                         monitoring.capture_exception(exc)

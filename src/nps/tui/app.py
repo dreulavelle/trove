@@ -138,9 +138,11 @@ class TroveApp(App):
     def __init__(self, output_dir: Path | None = None) -> None:
         super().__init__()
         self.settings = load_settings()
-        self.output_dir = Path(output_dir) if output_dir else Path(self.settings.download_dir)
+        base = Path(output_dir) if output_dir else Path(self.settings.download_dir)
+        self.output_dir = base.expanduser()
         self.concurrency = self.settings.concurrency
         self.verify = self.settings.verify
+        self.organize = self.settings.organize_by_platform
         self.games: list[Game] = []
         self.view: list[Game] = []
         self.selected: dict[str, Game] = {}
@@ -166,12 +168,16 @@ class TroveApp(App):
                     yield Input(placeholder="search title or ID…", id="search")
                 yield DataTable(id="table", cursor_type="row")
             with TabPane("Downloads", id="downloads"):
-                yield Label("", id="dl-dest")
                 yield VerticalScroll(id="dl-list")
             with TabPane("Settings", id="settings"):
                 with VerticalScroll(id="settings-form"):
                     yield Label("Download folder", classes="set-label")
-                    yield Input(value=str(self.output_dir), id="set-dir")
+                    yield Input(value=self.settings.download_dir, id="set-dir")
+                    yield Label("", id="current-dest")
+                    with Horizontal(classes="set-row"):
+                        yield Switch(value=self.organize, id="set-organize")
+                        yield Label("Organize into per-console folders (downloads/psvita …)",
+                                    classes="set-switch-label")
                     yield Label("Concurrent downloads (1–16)", classes="set-label")
                     yield Input(value=str(self.concurrency), id="set-concurrency", type="integer")
                     yield Label("Default region filter", classes="set-label")
@@ -179,6 +185,15 @@ class TroveApp(App):
                     with Horizontal(classes="set-row"):
                         yield Switch(value=self.verify, id="set-verify")
                         yield Label("Verify SHA-256 after each download", classes="set-switch-label")
+                    yield Label("aria2 instance — optional; used by default when set", classes="set-section")
+                    yield Label("RPC URL", classes="set-label")
+                    yield Input(value=self.settings.aria2_rpc_url,
+                                placeholder="http://localhost:6800/jsonrpc", id="set-aria2-url")
+                    yield Label("RPC secret", classes="set-label")
+                    yield Input(value=self.settings.aria2_rpc_secret, password=True, id="set-aria2-secret")
+                    yield Label("Remote download dir", classes="set-label")
+                    yield Input(value=self.settings.aria2_dir,
+                                placeholder="dir on the aria2 host", id="set-aria2-dir")
                     yield Button("Save settings", id="set-save", variant="primary")
         yield Static("", id="status")
         yield Footer()
@@ -191,11 +206,16 @@ class TroveApp(App):
         self.load_dataset()
 
     def _update_dest(self) -> None:
+        raw = self.query_one("#set-dir", Input).value.strip() or "downloads"
         try:
-            dest = str(self.output_dir.resolve())
+            dest = str(Path(raw).expanduser().resolve())
         except OSError:
-            dest = str(self.output_dir)
-        self.query_one("#dl-dest", Label).update(f" Saving to  {dest}")
+            dest = raw
+        self.query_one("#current-dest", Label).update(f"Current Download Location:  {dest}")
+
+    @on(Input.Changed, "#set-dir")
+    def _dest_changed(self) -> None:
+        self._update_dest()
 
     @property
     def platform(self) -> Platform:
@@ -338,16 +358,22 @@ class TroveApp(App):
         conc_in = self.query_one("#set-concurrency", Input).value.strip()
         region_in = self.query_one("#set-region", Input).value.strip()
         verify_in = self.query_one("#set-verify", Switch).value
+        organize_in = self.query_one("#set-organize", Switch).value
         try:
             conc = max(1, min(16, int(conc_in))) if conc_in else 3
         except ValueError:
             conc = self.concurrency
         self.settings = Settings(
-            download_dir=dir_in, concurrency=conc, verify=verify_in, region=region_in
+            download_dir=dir_in, concurrency=conc, verify=verify_in, region=region_in,
+            organize_by_platform=organize_in,
+            aria2_rpc_url=self.query_one("#set-aria2-url", Input).value.strip(),
+            aria2_rpc_secret=self.query_one("#set-aria2-secret", Input).value.strip(),
+            aria2_dir=self.query_one("#set-aria2-dir", Input).value.strip(),
         )
         path = save_settings(self.settings)
-        self.output_dir = Path(dir_in)
-        self.concurrency, self.verify, self._region = conc, verify_in, region_in
+        self.output_dir = Path(dir_in).expanduser()
+        self.concurrency, self.verify, self.organize = conc, verify_in, organize_in
+        self._region = region_in
         self.query_one("#region", Input).value = region_in  # reflect in the Browse filter
         self._update_dest()
         self.notify(f"Saved to {path}")
@@ -363,15 +389,18 @@ class TroveApp(App):
             rows[g.filename] = row
         results = await download_games(
             games, self.output_dir, concurrency=self.concurrency, verify=self.verify,
-            sink=_TextualSink(rows),
+            organize=self.organize, sink=_TextualSink(rows),
         )
         self.notify(f"Downloaded {len(results)}/{len(games)} to {self.output_dir}")
 
     @work(exclusive=True, group="aria2")
     async def push_aria2(self, games: list[Game]) -> None:
-        url = os.getenv("ARIA2_RPC_URL")
+        url = self.settings.aria2_rpc_url or os.getenv("ARIA2_RPC_URL")
         if not url:
-            self.notify("ARIA2_RPC_URL not set", severity="error")
+            self.notify("No aria2 RPC URL — set one in Settings or ARIA2_RPC_URL", severity="error")
             return
-        gids = await add_to_aria2_rpc(games, url, secret=os.getenv("ARIA2_RPC_SECRET"))
+        secret = self.settings.aria2_rpc_secret or os.getenv("ARIA2_RPC_SECRET")
+        gids = await add_to_aria2_rpc(
+            games, url, secret=secret, remote_dir=self.settings.aria2_dir or None, organize=self.organize
+        )
         self.notify(f"Queued {len(gids)}/{len(games)} to aria2")

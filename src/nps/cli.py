@@ -13,6 +13,7 @@ from loguru import logger
 from . import __version__
 from .aria2 import add_to_aria2_rpc, run_aria2c, write_aria2_input
 from .catalog import load_games, reset_cache
+from .config import load_settings
 from .download import download_games
 from .models import ContentType, Filter, Game, Platform
 
@@ -65,12 +66,18 @@ def _build_parser() -> argparse.ArgumentParser:
                    help="Only items at least SIZE (e.g. 100MB, 2GB).")
     p.add_argument("--max-size", type=parse_size, metavar="SIZE",
                    help="Only items at most SIZE (e.g. 500MB, 4GB).")
-    p.add_argument("-o", "--output", type=Path, default=Path("downloads"), help="Output directory.")
+    p.add_argument("-o", "--output", type=Path, default=None,
+                   help="Output directory (default: settings download_dir, or ./downloads).")
+    p.add_argument("--flat", action="store_true",
+                   help="Don't split downloads into per-console subfolders.")
+    p.add_argument("--local", action="store_true",
+                   help="Force the built-in downloader even if an aria2 instance is configured.")
     p.add_argument("-l", "--list", action="store_true", help="List matches without downloading.")
     p.add_argument("--json", action="store_true",
                    help="Print matches as JSON (no download); for scripts and agents.")
     p.add_argument("-a", "--all", action="store_true", help="Download every downloadable match.")
-    p.add_argument("-c", "--concurrency", type=int, default=3, help="Max concurrent downloads.")
+    p.add_argument("-c", "--concurrency", type=int, default=None,
+                   help="Max concurrent downloads (default: settings concurrency, or 3).")
     p.add_argument("--no-verify", action="store_true", help="Skip SHA256 verification.")
     p.add_argument("--refresh", action="store_true", help="Force-refresh the catalog from NoPayStation.")
     p.add_argument("--reset-cache", action="store_true", help="Delete all cached catalogs and exit.")
@@ -78,11 +85,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--aria2", type=Path, metavar="FILE", help="Export matches as an aria2 input file.")
     p.add_argument("--aria2-run", action="store_true",
                    help="Download matches now via a local aria2c (single command; needs aria2c on PATH).")
-    p.add_argument("--aria2-rpc", nargs="?", const=os.getenv("ARIA2_RPC_URL"), metavar="URL",
-                   help="Push matches to a running aria2 daemon (URL or ARIA2_RPC_URL env).")
-    p.add_argument("--aria2-secret", default=os.getenv("ARIA2_RPC_SECRET"),
-                   help="aria2 RPC secret token (or ARIA2_RPC_SECRET env).")
-    p.add_argument("--aria2-dir", help="Download dir on the aria2 host (RPC mode).")
+    p.add_argument("--aria2-rpc", nargs="?", const="", default=None, metavar="URL",
+                   help="Push to a running aria2 daemon (URL, or ARIA2_RPC_URL / saved settings).")
+    p.add_argument("--aria2-secret", default=None,
+                   help="aria2 RPC secret token (or ARIA2_RPC_SECRET env / saved settings).")
+    p.add_argument("--aria2-dir", default=None, help="Download dir on the aria2 host (RPC mode).")
     p.add_argument("--version", action="version", version=f"nps {__version__}")
     return p
 
@@ -138,33 +145,45 @@ def main(argv: list[str] | None = None) -> None:
         logger.warning("No downloadable matches.")
         return
 
+    # Resolve effective options: explicit flag > env > saved settings > built-in default.
+    settings = load_settings()
+    output = (args.output or Path(settings.download_dir)).expanduser()
+    concurrency = args.concurrency if args.concurrency is not None else settings.concurrency
+    verify = settings.verify and not args.no_verify
+    organize = settings.organize_by_platform and not args.flat
+    aria2_url = (args.aria2_rpc or None) or os.getenv("ARIA2_RPC_URL") or settings.aria2_rpc_url
+    aria2_secret = args.aria2_secret or os.getenv("ARIA2_RPC_SECRET") or settings.aria2_rpc_secret or None
+    aria2_remote_dir = args.aria2_dir or settings.aria2_dir or None
+
     if args.aria2:
-        count = write_aria2_input(matches, args.output, args.aria2)
+        count = write_aria2_input(matches, output, args.aria2, organize=organize)
         logger.info("Wrote {} entries to {}", count, args.aria2)
-        logger.info("Run: aria2c -c -j{} -i {}", args.concurrency, args.aria2)
+        logger.info("Run: aria2c -c -j{} -i {}", concurrency, args.aria2)
         return
 
     if args.aria2_run:
         try:
-            run_aria2c(matches, args.output, concurrency=args.concurrency)
+            run_aria2c(matches, output, concurrency=concurrency, organize=organize)
         except FileNotFoundError as exc:
             logger.error(str(exc))
         return
 
-    if args.aria2_rpc:
+    # Use a configured/requested aria2 instance unless --local forces the built-in downloader.
+    if args.aria2_rpc is not None or (aria2_url and not args.local):
+        if not aria2_url:
+            logger.error("aria2 requested but no URL set (--aria2-rpc URL, ARIA2_RPC_URL, or settings).")
+            return
         gids = asyncio.run(
             add_to_aria2_rpc(
-                matches, args.aria2_rpc, secret=args.aria2_secret, remote_dir=args.aria2_dir
+                matches, aria2_url, secret=aria2_secret, remote_dir=aria2_remote_dir, organize=organize
             )
         )
-        logger.info("Queued {}/{} download(s) to aria2.", len(gids), len(matches))
+        logger.info("Queued {}/{} download(s) to aria2 ({}).", len(gids), len(matches), aria2_url)
         return
 
-    logger.info(
-        "Downloading {} item(s) to {} (concurrency={})", len(matches), args.output, args.concurrency
-    )
+    logger.info("Downloading {} item(s) to {} (concurrency={})", len(matches), output, concurrency)
     asyncio.run(
-        download_games(matches, args.output, concurrency=args.concurrency, verify=not args.no_verify)
+        download_games(matches, output, concurrency=concurrency, verify=verify, organize=organize)
     )
 
 

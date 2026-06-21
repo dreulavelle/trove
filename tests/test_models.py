@@ -1,4 +1,11 @@
-from nps.models import ContentType, Filter, Game, Platform, parse_fw
+from nps.models import ContentType, Filter, Game, Platform, dest_dir, parse_fw
+
+
+def test_platform_folder_and_dest_dir(tmp_path):
+    g = Game(title_id="X", platform=Platform.PSV, pkg_direct_link="http://e/x.pkg")
+    assert Platform.PSV.folder == "psvita" and Platform.PSX.folder == "psx"
+    assert dest_dir(tmp_path, g, organize=True) == tmp_path / "psvita"
+    assert dest_dir(tmp_path, g, organize=False) == tmp_path
 
 
 def test_identity_fields_survive_blank_normalization():
