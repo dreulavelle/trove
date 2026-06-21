@@ -15,16 +15,14 @@ Downloads resume, retry, and verify SHA-256, or hand off to a running aria2.
 
 ## Install
 
-```bash
-pip install trovenps
-```
-
-For development from a clone, use [uv](https://docs.astral.sh/uv/):
+From a clone, with [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv sync                       # core
 uv sync --extra monitoring    # + optional GlitchTip/Sentry error reporting
 ```
+
+Once published to PyPI, `pip install trovenps` installs the same commands.
 
 Two commands ship with the package:
 
