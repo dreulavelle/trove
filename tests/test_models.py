@@ -1,4 +1,4 @@
-from nps.models import ContentType, Filter, Game, Platform, dest_dir, parse_fw
+from trovenps.models import ContentType, Filter, Game, Platform, dest_dir, parse_fw
 
 
 def test_platform_folder_and_dest_dir(tmp_path):

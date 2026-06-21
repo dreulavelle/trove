@@ -1,7 +1,7 @@
 import pytest
 
-from nps.models import ContentType, Game, Platform
-from nps.tui import app as tui_app
+from trovenps.models import ContentType, Game, Platform
+from trovenps.tui import app as tui_app
 
 
 def _game(tid, region, name, *, link=True):

@@ -1,4 +1,4 @@
-from nps.config import Settings, load_settings, save_settings
+from trovenps.config import Settings, load_settings, save_settings
 
 
 def test_defaults_when_missing(tmp_path):

@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from nps import aria2
-from nps.models import ContentType, Game, Platform
+from trovenps import aria2
+from trovenps.models import ContentType, Game, Platform
 
 _CTX = {"platform": Platform.PSV, "content_type": ContentType.GAMES}
 

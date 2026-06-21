@@ -1,7 +1,7 @@
 import time
 
-from nps import catalog
-from nps.models import ContentType, Game, Platform
+from trovenps import catalog
+from trovenps.models import ContentType, Game, Platform
 
 # A synthetic dataset exercising the real-world quirks the parser must survive:
 # duplicate FW headers, a junk file size, a Unicode name, and a header-less row.

@@ -1,7 +1,7 @@
 import json
 
-from nps.cli import _game_json, parse_size
-from nps.models import ContentType, Game, Platform
+from trovenps.cli import _game_json, parse_size
+from trovenps.models import ContentType, Game, Platform
 
 
 def test_parse_size_units():
