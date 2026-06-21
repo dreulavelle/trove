@@ -1,7 +1,14 @@
 import json
 
-from nps.cli import _game_json
+from nps.cli import _game_json, parse_size
 from nps.models import ContentType, Game, Platform
+
+
+def test_parse_size_units():
+    assert parse_size("1024") == 1024
+    assert parse_size("2GB") == 2 * 1024**3
+    assert parse_size("500mb") == 500 * 1024**2
+    assert parse_size("1.5GB") == int(1.5 * 1024**3)
 
 _CTX = {"platform": Platform.PSV, "content_type": ContentType.GAMES}
 

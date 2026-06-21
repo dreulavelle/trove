@@ -1,4 +1,4 @@
-from nps.models import ContentType, Filter, Game, Platform
+from nps.models import ContentType, Filter, Game, Platform, parse_fw
 
 
 def test_identity_fields_survive_blank_normalization():
@@ -50,6 +50,33 @@ def test_filter_query_region_and_downloadable():
     assert {g.title_id for g in Filter(query="alpha").apply(games)} == {"A1"}
     assert {g.title_id for g in Filter(regions=["us"]).apply(games)} == {"A1"}  # C3 not downloadable
     assert {g.title_id for g in Filter(regions={"us"}, downloadable_only=False).apply(games)} == {"A1", "C3"}
+
+
+def test_parse_fw():
+    assert parse_fw("3.60") == 3.60
+    assert parse_fw("0") == 0.0
+    assert parse_fw(None) is None
+    assert parse_fw("n/a") is None
+
+
+def test_filter_max_fw_excludes_unknown_and_too_high():
+    games = [
+        Game(title_id="LOW", required_fw="1.50", pkg_direct_link="http://e/a.pkg"),
+        Game(title_id="HIGH", required_fw="3.65", pkg_direct_link="http://e/b.pkg"),
+        Game(title_id="NONE", required_fw=None, pkg_direct_link="http://e/c.pkg"),
+    ]
+    kept = {g.title_id for g in Filter(max_fw=3.60).apply(games)}
+    assert kept == {"LOW"}  # HIGH too new, NONE unknown -> both excluded
+
+
+def test_filter_size_bounds():
+    games = [
+        Game(title_id="S", file_size=50_000_000, pkg_direct_link="http://e/s.pkg"),
+        Game(title_id="M", file_size=500_000_000, pkg_direct_link="http://e/m.pkg"),
+        Game(title_id="NOSIZE", file_size=None, pkg_direct_link="http://e/n.pkg"),
+    ]
+    assert {g.title_id for g in Filter(min_size=100_000_000).apply(games)} == {"M"}
+    assert {g.title_id for g in Filter(max_size=100_000_000).apply(games)} == {"S"}
 
 
 def test_platform_and_content_type_enums_assignable():
