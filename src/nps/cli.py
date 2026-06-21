@@ -16,6 +16,17 @@ from .catalog import load_games, reset_cache
 from .download import download_games
 from .models import ContentType, Filter, Game, Platform
 
+_SIZE_UNITS = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3, "TB": 1024**4}
+
+
+def parse_size(text: str) -> int:
+    """Parse a size like ``2GB``, ``500MB``, or a raw byte count into bytes."""
+    s = text.strip().upper()
+    for unit in ("TB", "GB", "MB", "KB", "B"):
+        if s.endswith(unit):
+            return int(float(s[: -len(unit)].strip()) * _SIZE_UNITS[unit])
+    return int(s)  # bare number = bytes
+
 
 def _game_json(g: Game) -> dict[str, object]:
     """A flat, agent-friendly view of a game (stable keys, no internal model noise)."""
@@ -30,6 +41,7 @@ def _game_json(g: Game) -> dict[str, object]:
         "url": g.download_url if g.downloadable else None,
         "file_size": g.file_size,
         "sha256": g.sha256,
+        "required_fw": g.required_fw,
         "content_id": g.content_id,
         "last_modification_date": g.last_modification_date,
     }
@@ -45,6 +57,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("-t", "--type", type=ContentType, choices=list(ContentType), default=ContentType.GAMES,
                    dest="content_type", help="Content type (default: GAMES).")
     p.add_argument("-r", "--region", action="append", help="Region to include (repeatable), e.g. US EU JP.")
+    p.add_argument("--name", help="Filter by name substring only (case-insensitive).")
+    p.add_argument("--title-id", dest="title_id", help="Filter by Title ID substring only.")
+    p.add_argument("--max-fw", type=float, metavar="VERSION",
+                   help="Only items requiring firmware <= VERSION (e.g. 3.60).")
+    p.add_argument("--min-size", type=parse_size, metavar="SIZE",
+                   help="Only items at least SIZE (e.g. 100MB, 2GB).")
+    p.add_argument("--max-size", type=parse_size, metavar="SIZE",
+                   help="Only items at most SIZE (e.g. 500MB, 4GB).")
     p.add_argument("-o", "--output", type=Path, default=Path("downloads"), help="Output directory.")
     p.add_argument("-l", "--list", action="store_true", help="List matches without downloading.")
     p.add_argument("--json", action="store_true",
@@ -89,11 +109,20 @@ def main(argv: list[str] | None = None) -> None:
         logger.warning("No catalog data for {} {}.", args.platform.value, args.content_type.value)
         return
 
-    flt = Filter(query=args.query, regions=set(args.region) if args.region else None)
+    fkw: dict[str, object] = dict(
+        query=args.query,
+        title_id=args.title_id,
+        name=args.name,
+        regions=set(args.region) if args.region else None,
+        max_fw=args.max_fw,
+        min_size=args.min_size,
+        max_size=args.max_size,
+    )
+    flt = Filter(**fkw)
     matches = flt.apply(games)
 
     if args.json or args.list or not (args.query or args.all):
-        shown = Filter(query=args.query, regions=flt.regions, downloadable_only=False).apply(games)
+        shown = Filter(**fkw, downloadable_only=False).apply(games)
         if args.json:
             print(json.dumps([_game_json(g) for g in shown], indent=2))
             return

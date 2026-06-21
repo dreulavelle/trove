@@ -107,6 +107,16 @@ class Game(BaseModel):
         return f"{self.title_id}|{self.region}|{self.content_id or self.name}"
 
 
+def parse_fw(value: str | None) -> float | None:
+    """A firmware string (``"3.60"``, ``"0"``) as a float, or ``None`` if unparseable."""
+    if not value:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        return None
+
+
 class Filter(BaseModel):
     """Game selection criteria; unset fields are ignored."""
 
@@ -114,6 +124,9 @@ class Filter(BaseModel):
     title_id: str | None = None
     name: str | None = None
     regions: set[str] | None = None
+    max_fw: float | None = None
+    min_size: int | None = None
+    max_size: int | None = None
     downloadable_only: bool = True
 
     @field_validator("regions", mode="before")
@@ -132,6 +145,14 @@ class Filter(BaseModel):
             return False
         if self.name and self.name.lower() not in game.name.lower():
             return False
+        if self.min_size is not None and (game.file_size is None or game.file_size < self.min_size):
+            return False
+        if self.max_size is not None and (game.file_size is None or game.file_size > self.max_size):
+            return False
+        if self.max_fw is not None:
+            fw = parse_fw(game.required_fw)  # unknown firmware is excluded, not assumed safe
+            if fw is None or fw > self.max_fw:
+                return False
         if self.query:
             q = self.query.lower()
             if q not in game.title_id.lower() and q not in game.name.lower():
