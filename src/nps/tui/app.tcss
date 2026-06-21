@@ -87,6 +87,20 @@ DownloadRow .dl-stats {
     margin-top: 1;
 }
 
+#current-dest {
+    color: $text-muted;
+    text-style: italic;
+    margin-bottom: 1;
+}
+
+.set-section {
+    color: $text;
+    text-style: bold;
+    margin-top: 2;
+    border-top: tall $primary-darken-1;
+    padding-top: 1;
+}
+
 #settings-form Input {
     width: 64;
     max-width: 100%;

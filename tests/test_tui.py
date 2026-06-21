@@ -191,11 +191,20 @@ def _label_text(widget) -> str:
     return str(widget.render())
 
 
-async def test_downloads_destination_header(app):
+async def test_current_location_in_settings(app):
     async with app.run_test() as pilot:
         await pilot.pause()
-        dest = _label_text(app.query_one("#dl-dest", tui_app.Label))
-        assert "Saving to" in dest and "downloads" in dest
+        assert not app.query("#dl-dest")  # moved off the Downloads tab
+        dest = _label_text(app.query_one("#current-dest", tui_app.Label))
+        assert "Current Download Location" in dest and "downloads" in dest
+
+
+async def test_current_location_tracks_input(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app.query_one("#set-dir", tui_app.Input).value = "/games/psv"
+        await pilot.pause()
+        assert "games" in _label_text(app.query_one("#current-dest", tui_app.Label))
 
 
 async def test_settings_save_applies_and_persists(app, monkeypatch):
@@ -213,14 +222,18 @@ async def test_settings_save_applies_and_persists(app, monkeypatch):
         app.query_one("#set-dir", tui_app.Input).value = "/games"
         app.query_one("#set-concurrency", tui_app.Input).value = "8"
         app.query_one("#set-verify", tui_app.Switch).value = False
+        app.query_one("#set-organize", tui_app.Switch).value = False
+        app.query_one("#set-aria2-url", tui_app.Input).value = "http://host:6800/jsonrpc"
         await pilot.pause()
         app._save_settings()                      # same path as pressing "Save"
         await pilot.pause()
         assert captured["s"].download_dir == "/games"
         assert captured["s"].concurrency == 8 and captured["s"].verify is False
+        assert captured["s"].organize_by_platform is False
+        assert captured["s"].aria2_rpc_url == "http://host:6800/jsonrpc"
         assert app.output_dir == Path("/games")    # applied live (separator-agnostic)
-        assert app.concurrency == 8 and app.verify is False
-        assert "games" in _label_text(app.query_one("#dl-dest", tui_app.Label))
+        assert app.concurrency == 8 and app.verify is False and app.organize is False
+        assert "games" in _label_text(app.query_one("#current-dest", tui_app.Label))
 
 
 async def test_download_row_shows_speed_and_size(app):
