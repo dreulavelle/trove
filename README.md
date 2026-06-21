@@ -9,7 +9,7 @@ Downloads resume, retry, and verify SHA-256, or hand off to a running aria2.
 ## Quickstart
 
 ```bash
-pip install trovenps   # or, from a clone: uv sync
+uv sync                # from a clone (or `pip install trovenps` once on PyPI)
 nps "tearaway"         # search the catalog
 trove                  # browse in the TUI
 ```
