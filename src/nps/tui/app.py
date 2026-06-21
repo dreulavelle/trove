@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 from textual import on, work
@@ -10,6 +11,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import (
+    Button,
     DataTable,
     Footer,
     Header,
@@ -18,12 +20,14 @@ from textual.widgets import (
     ProgressBar,
     Select,
     Static,
+    Switch,
     TabbedContent,
     TabPane,
 )
 
 from ..aria2 import add_to_aria2_rpc
 from ..catalog import DATASETS, load_games
+from ..config import Settings, load_settings, save_settings
 from ..download import download_games
 from ..models import ContentType, Filter, Game, Platform
 
@@ -45,24 +49,56 @@ def game_key(game: Game) -> str:
 
 
 class DownloadRow(Static):
+    """One transfer: title, progress bar, and a live speed / size readout."""
+
     def __init__(self, game: Game) -> None:
         super().__init__()
         self._game = game
+        self._total: int | None = None
+        self._done = 0
+        self._mark = 0       # bytes seen at the last tick
+        self._t = 0.0        # monotonic time at the last tick
+        self._speed = 0.0    # smoothed bytes/sec
+        self._finished = False
 
     def compose(self) -> ComposeResult:
-        yield Label(f"{self._game.title_id}  {self._game.name}"[:60])
+        yield Label(f"{self._game.title_id}  {self._game.name}"[:60], classes="dl-title")
         yield ProgressBar(total=None, show_eta=True)
+        yield Label("queued…", classes="dl-stats")
+
+    def on_mount(self) -> None:
+        self._t = time.monotonic()
+        self.set_interval(1.0, self._tick)
 
     def set_total(self, total: int | None, initial: int) -> None:
+        self._total = total
+        self._done = self._mark = initial
         self.query_one(ProgressBar).update(total=total, progress=initial)
 
     def advance(self, amount: int) -> None:
+        self._done += amount
         self.query_one(ProgressBar).advance(amount)
 
     def complete(self) -> None:
+        self._finished = True
         bar = self.query_one(ProgressBar)
         if bar.total is not None:
             bar.update(progress=bar.total)
+        self.query_one(".dl-stats", Label).update(f"done · {human_size(self._total or self._done)}")
+
+    def _tick(self) -> None:
+        if self._finished:
+            return
+        now = time.monotonic()
+        dt = now - self._t
+        if dt > 0:
+            inst = max(0.0, (self._done - self._mark) / dt)
+            self._speed = inst if self._speed == 0 else 0.6 * self._speed + 0.4 * inst
+        self._mark, self._t = self._done, now
+        size = human_size(self._done) or "0B"
+        total = human_size(self._total) if self._total else "?"
+        rate = f"{human_size(int(self._speed))}/s" if self._speed >= 1 else "—"
+        self.query_one(".dl-stats", Label).update(f"{rate}    {size} / {total}")
 
 
 class _TextualSink:
@@ -101,13 +137,16 @@ class TroveApp(App):
 
     def __init__(self, output_dir: Path | None = None) -> None:
         super().__init__()
-        self.output_dir = output_dir or Path("downloads")
+        self.settings = load_settings()
+        self.output_dir = Path(output_dir) if output_dir else Path(self.settings.download_dir)
+        self.concurrency = self.settings.concurrency
+        self.verify = self.settings.verify
         self.games: list[Game] = []
         self.view: list[Game] = []
         self.selected: dict[str, Game] = {}
         self._by_key: dict[str, Game] = {}
         self._search = ""
-        self._region = ""
+        self._region = self.settings.region
         self._refresh = False
 
     def compose(self) -> ComposeResult:
@@ -123,11 +162,24 @@ class TroveApp(App):
                         [(t.value, t) for t in DATASETS[Platform.PSV]],
                         value=ContentType.GAMES, allow_blank=False, id="type",
                     )
-                    yield Input(placeholder="region", id="region")
+                    yield Input(value=self._region, placeholder="region", id="region")
                     yield Input(placeholder="search title or ID…", id="search")
                 yield DataTable(id="table", cursor_type="row")
             with TabPane("Downloads", id="downloads"):
+                yield Label("", id="dl-dest")
                 yield VerticalScroll(id="dl-list")
+            with TabPane("Settings", id="settings"):
+                with VerticalScroll(id="settings-form"):
+                    yield Label("Download folder", classes="set-label")
+                    yield Input(value=str(self.output_dir), id="set-dir")
+                    yield Label("Concurrent downloads (1–16)", classes="set-label")
+                    yield Input(value=str(self.concurrency), id="set-concurrency", type="integer")
+                    yield Label("Default region filter", classes="set-label")
+                    yield Input(value=self._region, placeholder="e.g. US — blank for all", id="set-region")
+                    with Horizontal(classes="set-row"):
+                        yield Switch(value=self.verify, id="set-verify")
+                        yield Label("Verify SHA-256 after each download", classes="set-switch-label")
+                    yield Button("Save settings", id="set-save", variant="primary")
         yield Static("", id="status")
         yield Footer()
 
@@ -135,7 +187,15 @@ class TroveApp(App):
         table = self.query_one(DataTable)
         self._columns = table.add_columns("", "Title ID", "Region", "Name", "Size")
         table.focus()  # action keys act on the list by default; "/" jumps to search
+        self._update_dest()
         self.load_dataset()
+
+    def _update_dest(self) -> None:
+        try:
+            dest = str(self.output_dir.resolve())
+        except OSError:
+            dest = str(self.output_dir)
+        self.query_one("#dl-dest", Label).update(f" Saving to  {dest}")
 
     @property
     def platform(self) -> Platform:
@@ -272,6 +332,26 @@ class TroveApp(App):
             return
         self.push_aria2(games)
 
+    @on(Button.Pressed, "#set-save")
+    def _save_settings(self) -> None:
+        dir_in = self.query_one("#set-dir", Input).value.strip() or "downloads"
+        conc_in = self.query_one("#set-concurrency", Input).value.strip()
+        region_in = self.query_one("#set-region", Input).value.strip()
+        verify_in = self.query_one("#set-verify", Switch).value
+        try:
+            conc = max(1, min(16, int(conc_in))) if conc_in else 3
+        except ValueError:
+            conc = self.concurrency
+        self.settings = Settings(
+            download_dir=dir_in, concurrency=conc, verify=verify_in, region=region_in
+        )
+        path = save_settings(self.settings)
+        self.output_dir = Path(dir_in)
+        self.concurrency, self.verify, self._region = conc, verify_in, region_in
+        self.query_one("#region", Input).value = region_in  # reflect in the Browse filter
+        self._update_dest()
+        self.notify(f"Saved to {path}")
+
     @work(exclusive=True, group="download")
     async def run_downloads(self, games: list[Game]) -> None:
         container = self.query_one("#dl-list", VerticalScroll)
@@ -281,7 +361,10 @@ class TroveApp(App):
             row = DownloadRow(g)
             await container.mount(row)
             rows[g.filename] = row
-        results = await download_games(games, self.output_dir, sink=_TextualSink(rows))
+        results = await download_games(
+            games, self.output_dir, concurrency=self.concurrency, verify=self.verify,
+            sink=_TextualSink(rows),
+        )
         self.notify(f"Downloaded {len(results)}/{len(games)} to {self.output_dir}")
 
     @work(exclusive=True, group="aria2")

@@ -1,14 +1,21 @@
-TabbedContent {
-    height: 1fr;  /* share the column with the fixed-height status bar */
+Screen {
+    background: $background;
 }
+
+TabbedContent {
+    height: 1fr;
+}
+
+/* ---------- Browse ---------- */
 
 #filters {
     height: 3;
-    padding: 0 1;
+    padding: 1 1 0 1;
+    align: left middle;
 }
 
 #filters Select {
-    width: 14;
+    width: 16;
     margin-right: 1;
 }
 
@@ -17,8 +24,32 @@ TabbedContent {
     margin-right: 1;
 }
 
-DataTable {
+#table {
     height: 1fr;
+    margin: 1 1;
+    border: round $primary-darken-1;
+    background: $surface;
+}
+
+#table > .datatable--header {
+    background: $surface;
+    color: $accent;
+    text-style: bold;
+}
+
+#table > .datatable--cursor {
+    background: $accent;
+    color: $text;
+    text-style: bold;
+}
+
+/* ---------- Downloads ---------- */
+
+#dl-dest {
+    height: 1;
+    background: $boost;
+    color: $text-muted;
+    text-style: italic;
 }
 
 #dl-list {
@@ -27,13 +58,59 @@ DataTable {
 }
 
 DownloadRow {
-    height: 3;
-    padding: 0 1;
-    border-bottom: tall $panel;
+    height: auto;
+    padding: 0 2;
+    margin-bottom: 1;
+    border: round $primary-darken-1;
+    background: $surface;
 }
+
+DownloadRow .dl-title {
+    text-style: bold;
+    color: $text;
+}
+
+DownloadRow .dl-stats {
+    color: $text-muted;
+}
+
+/* ---------- Settings ---------- */
+
+#settings-form {
+    height: 1fr;
+    padding: 1 2;
+}
+
+.set-label {
+    color: $accent;
+    text-style: bold;
+    margin-top: 1;
+}
+
+#settings-form Input {
+    width: 64;
+    max-width: 100%;
+    margin-bottom: 1;
+}
+
+.set-row {
+    height: 3;
+    align: left middle;
+}
+
+.set-row Switch {
+    margin-right: 2;
+}
+
+#set-save {
+    margin-top: 1;
+}
+
+/* ---------- Status bar ---------- */
 
 #status {
     height: 1;
-    background: $panel;
-    color: $text-muted;
+    background: $boost;
+    color: $text;
+    text-style: bold;
 }

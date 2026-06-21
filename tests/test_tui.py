@@ -31,6 +31,8 @@ def app(monkeypatch):
         return list(CATALOG.get(platform, []))
 
     monkeypatch.setattr(tui_app, "load_games", fake_load)
+    # Hermetic: ignore any real ~/.config/trovenps/settings.json on this machine.
+    monkeypatch.setattr(tui_app, "load_settings", lambda: tui_app.Settings())
     return tui_app.TroveApp()
 
 
@@ -183,6 +185,57 @@ async def test_duplicate_identity_rows_dont_crash(app):
         app.games = CATALOG[Platform.PSV] + [dup]
         app.apply_filter()
         assert app.query_one("#table").row_count == 5  # collapsed, no DuplicateKey
+
+
+def _label_text(widget) -> str:
+    return str(widget.render())
+
+
+async def test_downloads_destination_header(app):
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        dest = _label_text(app.query_one("#dl-dest", tui_app.Label))
+        assert "Saving to" in dest and "downloads" in dest
+
+
+async def test_settings_save_applies_and_persists(app, monkeypatch):
+    from pathlib import Path
+
+    captured = {}
+
+    def fake_save(settings, *a, **k):
+        captured["s"] = settings
+        return Path("settings.json")
+
+    monkeypatch.setattr(tui_app, "save_settings", fake_save)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        app.query_one("#set-dir", tui_app.Input).value = "/games"
+        app.query_one("#set-concurrency", tui_app.Input).value = "8"
+        app.query_one("#set-verify", tui_app.Switch).value = False
+        await pilot.pause()
+        app._save_settings()                      # same path as pressing "Save"
+        await pilot.pause()
+        assert captured["s"].download_dir == "/games"
+        assert captured["s"].concurrency == 8 and captured["s"].verify is False
+        assert app.output_dir == Path("/games")    # applied live (separator-agnostic)
+        assert app.concurrency == 8 and app.verify is False
+        assert "games" in _label_text(app.query_one("#dl-dest", tui_app.Label))
+
+
+async def test_download_row_shows_speed_and_size(app):
+    g = CATALOG[Platform.PSV][0]
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        row = tui_app.DownloadRow(g)
+        await app.query_one("#dl-list").mount(row)
+        await pilot.pause()
+        row.set_total(1000, 0)
+        row.advance(500)
+        row._tick()                                # force a stats refresh
+        assert "/" in _label_text(row.query_one(".dl-stats", tui_app.Label))
+        row.complete()
+        assert "done" in _label_text(row.query_one(".dl-stats", tui_app.Label))
 
 
 async def test_progress_sink_drives_bar(app):
