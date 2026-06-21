@@ -1,6 +1,6 @@
 [project]
 name = "trovenps"
-version = "0.5.0"
+version = "1.0.0"
 description = "Trove — a NoPayStation catalog browser & downloader (PSV/PSP/PS3/PSX/PSM) with resumable downloads, aria2 hand-off, and a TUI."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -9,7 +9,7 @@ license-files = ["LICENSE"]
 authors = [{ name = "Spoked" }]
 keywords = ["playstation", "psvita", "psp", "ps3", "nopaystation", "downloader", "tui"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
     "Programming Language :: Python :: 3.11",
