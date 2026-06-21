@@ -1,6 +1,6 @@
 [project]
 name = "trovenps"
-version = "0.4.0"
+version = "0.5.0"
 description = "Trove — a NoPayStation catalog browser & downloader (PSV/PSP/PS3/PSX/PSM) with resumable downloads, aria2 hand-off, and a TUI."
 readme = "README.md"
 requires-python = ">=3.11"
