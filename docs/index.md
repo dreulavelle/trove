@@ -15,14 +15,12 @@ Downloads resume, retry, and verify SHA-256, or hand off to a running aria2.
 
 ## Install
 
-From a clone, with [uv](https://docs.astral.sh/uv/):
-
 ```bash
-uv sync                       # core
-uv sync --extra monitoring    # + optional GlitchTip/Sentry error reporting
+pip install trovenps                  # core
+pip install "trovenps[monitoring]"    # + optional GlitchTip/Sentry error reporting
 ```
 
-Once published to PyPI, `pip install trovenps` installs the same commands.
+Or from a clone, with [uv](https://docs.astral.sh/uv/): `uv sync`.
 
 Two commands ship with the package:
 
