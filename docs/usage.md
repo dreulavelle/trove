@@ -61,6 +61,20 @@ Search, multi-select (selections survive searches), and download with live
 progress or aria2 hand-off. Press `/` to focus search; the result table keeps
 the action keys (download, select) live while you browse.
 
+The **Downloads** tab shows where files are being saved, plus a live speed and
+size for each transfer:
+
+![Downloads](downloads.svg)
+
+### Settings
+
+The **Settings** tab saves your download folder, concurrency, SHA-256
+verification, and a default region filter. They apply immediately and persist to
+`settings.json` in your OS config directory (`~/.config/trovenps` on Linux;
+override with `NPS_CONFIG_DIR`).
+
+![Settings](settings.svg)
+
 ## aria2 hand-off
 
 Use [aria2](https://aria2.github.io/) as the download engine instead of the
