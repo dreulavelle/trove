@@ -1,0 +1,59 @@
+name: binaries
+
+# Compiles standalone `nps` and `trove` binaries with Nuitka for Linux, macOS,
+# and Windows. Attaches them to a published release; can also be dispatched.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # upload release assets
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest,  target: linux-x64 }
+          - { os: macos-latest,   target: macos-arm64 }
+          - { os: windows-latest, target: windows-x64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install . nuitka
+      - name: Compile nps + trove
+        shell: bash
+        run: |
+          ext=""
+          [ "${{ runner.os }}" = "Windows" ] && ext=".exe"
+          mkdir -p out
+          for entry in nps trove; do
+            python -m nuitka --onefile --assume-yes-for-downloads \
+              --include-package=nps \
+              --include-package-data=nps \
+              --include-package-data=textual \
+              --include-distribution-metadata=trovenps \
+              --output-dir=build-nuitka \
+              --output-filename="${entry}${ext}" \
+              "packaging/${entry}_entry.py"
+            mv "build-nuitka/${entry}${ext}" "out/${entry}-${{ matrix.target }}${ext}"
+          done
+      - name: Smoke-test the CLI binary
+        shell: bash
+        run: ./out/nps-${{ matrix.target }}* --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.target }}
+          path: out/*
+      - name: Attach to release
+        if: github.event_name == 'release'
+        shell: bash
+        run: gh release upload "${{ github.event.release.tag_name }}" out/* --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
