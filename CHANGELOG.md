@@ -4,6 +4,17 @@ All notable changes to Trove are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/), and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] — 2026-06-21
+
+### Added
+- Standalone single-file binaries for Linux, macOS, and Windows, built with
+  Nuitka and attached to each release — no Python needed to run `nps` / `trove`.
+
+### Changed
+- Import package renamed `nps` → `trovenps` to match the distribution. Commands
+  (`nps`, `trove`) and `pip install trovenps` are unchanged; only `import nps`
+  becomes `import trovenps`.
+
 ## [1.0.0] — 2026-06-21
 
 First stable release.
@@ -44,6 +55,7 @@ First PyPI release.
 - Filters: `--max-fw` (firmware), `--min-size` / `--max-size`, `--name` /
   `--title-id`.
 
+[1.0.1]: https://github.com/dreulavelle/trove/releases/tag/v1.0.1
 [1.0.0]: https://github.com/dreulavelle/trove/releases/tag/v1.0.0
 [0.5.0]: https://github.com/dreulavelle/trove/releases/tag/v0.5.0
 [0.4.0]: https://github.com/dreulavelle/trove/releases/tag/v0.4.0
